@@ -105,3 +105,7 @@ deploy:
   type: git
   repo: git@github.com:kurisu9az/kurisu9az.github.io.git
   branch: gh-pages
+ ignore_hidden: false
+
+include:
+  - .nojekyll
