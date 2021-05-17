@@ -35,7 +35,7 @@ For information on troubleshooting Jekyll see:
 If you have any questions you can submit a request at https://support.github.com/contact?repo_id=367273128&page_build_id=253761474
 ```
 
-在参考了issue[The tag note is not a recognized Liquid tag](https://github.com/theme-next/hexo-theme-next/issues/410)，我选择直接删除掉next主题下的doc目录，目前暂不知道是否会有版权问题，如果会造成侵权，那么我在还原回去（逃。
+在参考了issue[The tag note is not a recognized Liquid tag](https://github.com/theme-next/hexo-theme-next/issues/410)，我选择直接删除掉next主题下的doc目录，目前暂不知道是否会有版权问题，如果会造成侵权，那么我再还原回去（逃。
 
 ## 使用github workflow构建成功却有警告
 ```bash
