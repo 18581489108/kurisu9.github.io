@@ -27,7 +27,7 @@
 <meta property="og:description" content="前言之前用过CSDN来写博客，但由于CSDN越来越拉，不得已就自建博客了。由于之前阿里云到期，现在在折腾腾讯云，自建博客也凉凉。于是就干脆折腾下github pages。 以下是在折腾过程中参考的文章，以及遇到的问题。 开始以下大部分内容参考的是微信文章超全面！如何用 GitHub 从零开始搭建一个博客 ？。 这里也不做复制怪了，有兴趣的之前看别人的文章即可。 关于使用github workflo">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2021-05-17T11:40:33.000Z">
-<meta property="article:modified_time" content="2021-05-17T04:27:51.487Z">
+<meta property="article:modified_time" content="2021-05-17T04:40:56.136Z">
 <meta property="article:author" content="kurisu9">
 <meta property="article:tag" content="折腾">
 <meta name="twitter:card" content="summary">
@@ -214,7 +214,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2021-05-17 11:40:33 / 修改时间：04:27:51" itemprop="dateCreated datePublished" datetime="2021-05-17T11:40:33+00:00">2021-05-17</time>
+              <time title="创建时间：2021-05-17 11:40:33 / 修改时间：04:40:56" itemprop="dateCreated datePublished" datetime="2021-05-17T11:40:33+00:00">2021-05-17</time>
             </span>
 
           
@@ -237,7 +237,7 @@
 <p>同时hexo的模板代码生成的根路径是直接使用的<code>/</code>，所以在有reponame时，访问hexo生成的页面时会加载不到css、js。所以将自己的账号名更改以后，正常的可以用<code>&#123;username&#125;.github.io</code>进行访问。</p>
 <h2 id="使用github-workflow构建失败"><a href="#使用github-workflow构建失败" class="headerlink" title="使用github workflow构建失败"></a>使用github workflow构建失败</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">The page build failed <span class="keyword">for</span> the `main` branch with the following error:</span><br><span class="line"></span><br><span class="line">The tag `note` on line 11 <span class="keyword">in</span> `themes/next/docs/AUTHORS.md` is not a recognized Liquid tag. For more information, see https://docs.github.com/github/working-with-github-pages/troubleshooting-jekyll-build-errors-for-github-pages-sites<span class="comment">#unknown-tag-error.</span></span><br><span class="line"></span><br><span class="line">For information on troubleshooting Jekyll see:</span><br><span class="line"></span><br><span class="line">  https://docs.github.com/articles/troubleshooting-jekyll-builds</span><br><span class="line"></span><br><span class="line">If you have any questions you can submit a request at https://support.github.com/contact?repo_id=367273128&amp;page_build_id=253761474</span><br></pre></td></tr></table></figure>
 
-<p>在参考了issue<a target="_blank" rel="noopener" href="https://github.com/theme-next/hexo-theme-next/issues/410">The tag note is not a recognized Liquid tag</a>，我选择直接删除掉next主题下的doc目录，目前暂不知道是否会有版权问题，如果会造成侵权，那么我在还原回去（逃。</p>
+<p>在参考了issue<a target="_blank" rel="noopener" href="https://github.com/theme-next/hexo-theme-next/issues/410">The tag note is not a recognized Liquid tag</a>，我选择直接删除掉next主题下的doc目录，目前暂不知道是否会有版权问题，如果会造成侵权，那么我再还原回去（逃。</p>
 <h2 id="使用github-workflow构建成功却有警告"><a href="#使用github-workflow构建成功却有警告" class="headerlink" title="使用github workflow构建成功却有警告"></a>使用github workflow构建成功却有警告</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">The page build completed successfully, but returned the following warning <span class="keyword">for</span> the `main` branch:</span><br><span class="line"></span><br><span class="line">You are attempting to use a Jekyll theme, <span class="string">&quot;next&quot;</span>, <span class="built_in">which</span> is not supported by GitHub Pages. Please visit https://pages.github.com/themes/ <span class="keyword">for</span> a list of supported themes. If you are using the <span class="string">&quot;theme&quot;</span> configuration variable <span class="keyword">for</span> something other than a Jekyll theme, we recommend you rename this variable throughout your site. For more information, see https://docs.github.com/github/working-with-github-pages/adding-a-theme-to-your-github-pages-site-using-jekyll.</span><br><span class="line"></span><br><span class="line">For information on troubleshooting Jekyll see:</span><br><span class="line"></span><br><span class="line">  https://docs.github.com/articles/troubleshooting-jekyll-builds</span><br><span class="line"></span><br><span class="line">If you have any questions you can submit a request at https://support.github.com/contact?repo_id=367273128&amp;page_build_id=253763232</span><br></pre></td></tr></table></figure>
 
 <p>这是没有安装<code>hexo-deployer-git</code>插件引起的，在本地安装一下即可。</p>
