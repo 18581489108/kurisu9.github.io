@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>使用docker镜像部署spring cloud config repo</title>
+    <url>/2021/05/21/%E4%BD%BF%E7%94%A8docker%E9%95%9C%E5%83%8F%E9%83%A8%E7%BD%B2spring-cloud-config-repo/</url>
+    <content><![CDATA[<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>之前折腾了一些spring cloud config repo来存放一些项目的配置文件，由于不需要自定义开发，于是就使用了别人制作好的docker镜像。</p>
+<h1 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h1><h2 id="准备配置文件"><a href="#准备配置文件" class="headerlink" title="准备配置文件"></a>准备配置文件</h2><p>准备好spring cloud confg repo的配置文件</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="comment"># application.yml</span></span><br><span class="line"><span class="attr">server:</span></span><br><span class="line">  <span class="attr">port:</span> <span class="number">8888</span></span><br><span class="line"></span><br><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">cloud:</span></span><br><span class="line">    <span class="attr">config:</span></span><br><span class="line">      <span class="attr">server:</span></span><br><span class="line">        <span class="attr">git:</span></span><br><span class="line">          <span class="attr">uri:</span> <span class="string">git@github.com:&#123;username&#125;/&#123;your-config-repo&#125;.git</span></span><br><span class="line">          <span class="attr">timeout:</span> <span class="number">10</span></span><br><span class="line">          <span class="comment"># 添加你的配置文件路径</span></span><br><span class="line">          <span class="attr">search-paths:</span></span><br><span class="line">            <span class="bullet">-</span> <span class="string">configs</span></span><br><span class="line">          <span class="attr">clone-on-start:</span> <span class="literal">true</span></span><br><span class="line">          <span class="comment"># 支持直接使用用户名和密码登录github仓库，但是不推荐</span></span><br><span class="line">          <span class="comment"># github已经警告过将会不再支持该方式</span></span><br><span class="line">          <span class="comment"># 因此这里建议使用ssh来登录到仓库</span></span><br><span class="line">          <span class="comment">#username: </span></span><br><span class="line">          <span class="comment">#password: </span></span><br></pre></td></tr></table></figure>
+
+<h2 id="配置ssh-key"><a href="#配置ssh-key" class="headerlink" title="配置ssh key"></a>配置ssh key</h2><p>如何生成ssh key以及上传到github，详情见<br>(Connecting to GitHub with SSH)[<a href="https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh]">https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh]</a></p>
+<h2 id="使用镜像启动"><a href="#使用镜像启动" class="headerlink" title="使用镜像启动"></a>使用镜像启动</h2><p>镜像: <code>hyness/spring-cloud-config-server:2.2.6.RELEASE-jdk8</code></p>
+<p>启动命令</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 1. 需要将application.yml映射到镜像</span></span><br><span class="line"><span class="comment"># 2. 如果是使用ssh来连接到github，那么需要将当前用户的ssh目录映射到镜像</span></span><br><span class="line"><span class="comment"># 3. 如果应用也是跑到docker中，那么建议创建docker net来进行config server与应用的通信</span></span><br><span class="line"><span class="comment">#    否则需要将config server暴露端口给外部应用访问</span></span><br><span class="line"></span><br><span class="line">docker run --name spring-config-server \</span><br><span class="line"> -v ./application.yml:/config/application.yml \</span><br><span class="line"> -v /home/&#123;usr&#125;/.ssh:/root/.ssh \</span><br><span class="line"> -d hyness/spring-cloud-config-server:2.2.6.RELEASE-jdk8</span><br></pre></td></tr></table></figure>
+]]></content>
+      <tags>
+        <tag>折腾</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>关于折腾github pages那些事</title>
     <url>/2021/05/17/%E5%85%B3%E4%BA%8E%E6%8A%98%E8%85%BEgithub-pages%E9%82%A3%E4%BA%9B%E4%BA%8B/</url>
     <content><![CDATA[<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>之前用过CSDN来写博客，但由于CSDN越来越拉，不得已就自建博客了。由于之前阿里云到期，现在在折腾腾讯云，自建博客也凉凉。于是就干脆折腾下github pages。</p>
