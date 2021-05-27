@@ -1,6 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Comparator接口是如何定义升序降序的</title>
+    <url>/2021/05/27/Comparator%E6%8E%A5%E5%8F%A3%E6%98%AF%E5%A6%82%E4%BD%95%E5%AE%9A%E4%B9%89%E5%8D%87%E5%BA%8F%E9%99%8D%E5%BA%8F%E7%9A%84/</url>
+    <content><![CDATA[<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>在使用Comparator接口时，总是无法很好的理解到什么是升序降序，每次都需要写个用例跑一次才确定。(；′⌒`)</p>
+<h1 id="用例"><a href="#用例" class="headerlink" title="用例"></a>用例</h1><h2 id="升序"><a href="#升序" class="headerlink" title="升序"></a>升序</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    Integer[] arr = &#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;;</span><br><span class="line">    Arrays.sort(arr, (a, b) -&gt; a - b);</span><br><span class="line">    System.out.println(Arrays.toString(arr));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出: </p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">[1, 2, 3, 4, 5]</span><br></pre></td></tr></table></figure>
+
+<h2 id="降序"><a href="#降序" class="headerlink" title="降序"></a>降序</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">    Integer[] arr = &#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;;</span><br><span class="line">    Arrays.sort(arr, (a, b) -&gt; b - a);</span><br><span class="line">    System.out.println(Arrays.toString(arr));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出: </p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">[5, 4, 3, 2, 1]</span><br></pre></td></tr></table></figure>
+
+<h1 id="浅谈"><a href="#浅谈" class="headerlink" title="浅谈"></a>浅谈</h1><p>在java.util.Comparator#compare方法上的注释，说得很清楚:</p>
+<blockquote>
+<p>在比较两个参数的顺序时，第一个参数为a， 第二个参数为b</p>
+<ol>
+<li>a &lt; b时返回负数</li>
+<li>a == b时返回0</li>
+<li>a &gt; b时返回正数</li>
+<li>建议使用-1、0、1来代表三个返回值</li>
+</ol>
+</blockquote>
+<p>在java.util.Arrays#sort(T[], java.util.Comparator&lt;? super T&gt;)实现中，会根据参数使用不同的排序算法，有binary sort和merge sort。这里直接看merge sort的实现，比较容易理解。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// java.util.Arrays#mergeSort(java.lang.Object[], java.lang.Object[], int, int, int, java.util.Comparator)</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">mergeSort</span><span class="params">(Object[] src,</span></span></span><br><span class="line"><span class="params"><span class="function">                                  Object[] dest,</span></span></span><br><span class="line"><span class="params"><span class="function">                                  <span class="keyword">int</span> low, <span class="keyword">int</span> high, <span class="keyword">int</span> off,</span></span></span><br><span class="line"><span class="params"><span class="function">                                  Comparator c)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">int</span> length = high - low;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Insertion sort on smallest arrays</span></span><br><span class="line">        <span class="keyword">if</span> (length &lt; INSERTIONSORT_THRESHOLD) &#123;</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">int</span> i=low; i&lt;high; i++)</span><br><span class="line">                <span class="keyword">for</span> (<span class="keyword">int</span> j=i; j&gt;low &amp;&amp; c.compare(dest[j-<span class="number">1</span>], dest[j])&gt;<span class="number">0</span>; j--)</span><br><span class="line">                    swap(dest, j, j-<span class="number">1</span>);</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Recursively sort halves of dest into src</span></span><br><span class="line">        <span class="keyword">int</span> destLow  = low;</span><br><span class="line">        <span class="keyword">int</span> destHigh = high;</span><br><span class="line">        low  += off;</span><br><span class="line">        high += off;</span><br><span class="line">        <span class="keyword">int</span> mid = (low + high) &gt;&gt;&gt; <span class="number">1</span>;</span><br><span class="line">        mergeSort(dest, src, low, mid, -off, c);</span><br><span class="line">        mergeSort(dest, src, mid, high, -off, c);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// If list is already sorted, just copy from src to dest.  This is an</span></span><br><span class="line">        <span class="comment">// optimization that results in faster sorts for nearly ordered lists.</span></span><br><span class="line">        <span class="keyword">if</span> (c.compare(src[mid-<span class="number">1</span>], src[mid]) &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">           System.arraycopy(src, low, dest, destLow, length);</span><br><span class="line">           <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Merge sorted halves (now in src) into dest</span></span><br><span class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> i = destLow, p = low, q = mid; i &lt; destHigh; i++) &#123;</span><br><span class="line">            <span class="keyword">if</span> (q &gt;= high || p &lt; mid &amp;&amp; c.compare(src[p], src[q]) &lt;= <span class="number">0</span>)</span><br><span class="line">                dest[i] = src[p++];</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">                dest[i] = src[q++];</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>关键代码位置就是:</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span> (length &lt; INSERTIONSORT_THRESHOLD) &#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i=low; i&lt;high; i++)</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> j=i; j&gt;low &amp;&amp; c.compare(dest[j-<span class="number">1</span>], dest[j])&gt;<span class="number">0</span>; j--)</span><br><span class="line">            swap(dest, j, j-<span class="number">1</span>);</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里根据的compare方法的返回值来进行了交换。可以看到当返回值大于0时，则交换dest[j-1] 和dest[j]，而返回值小于等于0时，则顺序保持不变。</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>在Comparator中，只要compare方法的返回值大于0时，就将数组前一个数和后一个数进行交换，也就是说:</p>
+<ol>
+<li>如果需要升序，那么只要保证在参数a小于参数b时，返回负数即可</li>
+<li>如果需要降序，那么只要保证在参数a小于参数b时，返回正数即可</li>
+</ol>
+]]></content>
+      <tags>
+        <tag>java</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>使用docker镜像部署spring cloud config repo</title>
     <url>/2021/05/21/%E4%BD%BF%E7%94%A8docker%E9%95%9C%E5%83%8F%E9%83%A8%E7%BD%B2spring-cloud-config-repo/</url>
     <content><![CDATA[<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>之前折腾了一些spring cloud config repo来存放一些项目的配置文件，由于不需要自定义开发，于是就使用了别人制作好的docker镜像。</p>
