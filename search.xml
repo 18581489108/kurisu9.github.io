@@ -56,6 +56,90 @@
       </tags>
   </entry>
   <entry>
+    <title>使用fastjson对大型java bean反序列化时，生成的字节码错误: java.lang.VerifyError</title>
+    <url>/2021/06/03/%E4%BD%BF%E7%94%A8fastjson%E5%AF%B9%E5%A4%A7%E5%9E%8Bjava-bean%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%97%B6%EF%BC%8C%E7%94%9F%E6%88%90%E7%9A%84%E5%AD%97%E8%8A%82%E7%A0%81%E9%94%99%E8%AF%AF-java-lang-VerifyError/</url>
+    <content><![CDATA[<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>由于业务需求，项目中用于存储数据的bean，定义了很多字段。前面都相安无事，直到前几天新增了某个需求之后，在bean里添加了一个字段后，在从json反序列化时，抛出了<code>java.lang.VerifyError</code>。</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">Exception <span class="keyword">in</span> thread <span class="string">&quot;main&quot;</span> java.lang.VerifyError: (class: com/alibaba/fastjson/parser/deserializer/FastjsonASMDeserializer_1_LargeJavaBean, method: deserialze signature: (Lcom/alibaba/fastjson/parser/DefaultJSONParser;Ljava/lang/reflect/Type;Ljava/lang/Object;I)Ljava/lang/Object;) Illegal target of jump or branch</span><br><span class="line">	at java.base/java.lang.Class.getDeclaredConstructors0(Native Method)</span><br><span class="line">	at java.base/java.lang.Class.privateGetDeclaredConstructors(Class.java:3137)</span><br><span class="line">	at java.base/java.lang.Class.getConstructor0(Class.java:3342)</span><br><span class="line">	at java.base/java.lang.Class.getConstructor(Class.java:2151)</span><br><span class="line">	at com.alibaba.fastjson.parser.deserializer.ASMDeserializerFactory.createJavaBeanDeserializer(ASMDeserializerFactory.java:87)</span><br><span class="line">	at com.alibaba.fastjson.parser.ParserConfig.createJavaBeanDeserializer(ParserConfig.java:1082)</span><br><span class="line">	at com.alibaba.fastjson.parser.ParserConfig.getDeserializer(ParserConfig.java:888)</span><br><span class="line">	at com.alibaba.fastjson.parser.ParserConfig.getDeserializer(ParserConfig.java:593)</span><br><span class="line">	at com.alibaba.fastjson.parser.DefaultJSONParser.parseObject(DefaultJSONParser.java:699)</span><br><span class="line">	at com.alibaba.fastjson.JSON.parseObject(JSON.java:394)</span><br><span class="line">	at com.alibaba.fastjson.JSON.parseObject(JSON.java:298)</span><br><span class="line">	at com.alibaba.fastjson.JSON.parseObject(JSON.java:588)</span><br><span class="line">	at com.example.Main.main(Main.java:8)</span><br></pre></td></tr></table></figure>
+
+<p>具体的复现demo可以见<a href="https://github.com/alibaba/fastjson/issues/3796">issue 3796</a></p>
+<p>在遇到这个bug时，在fastjson的issues中搜索发现，在<a href="https://github.com/alibaba/fastjson/issues/2779">issue 2779</a>中已经遇到该bug，而在早在19年5月就已经修复了该问题。</p>
+<p>通过升级fastjosn到目前最新版本（1.2.76），仍然稳定复现该bug，那只能自己先排查一下问题。</p>
+<h1 id="排查问题"><a href="#排查问题" class="headerlink" title="排查问题"></a>排查问题</h1><h2 id="排查业务代码"><a href="#排查业务代码" class="headerlink" title="排查业务代码"></a>排查业务代码</h2><ol>
+<li>在对业务代码进行检查后，确定出现问题的bean在实现上是没有问题的。</li>
+<li>在注释掉新添加的字段后，进行反序列化时，正常运行</li>
+</ol>
+<p>于是推测是fastjon的实现问题。</p>
+<h2 id="排查错误堆栈信息"><a href="#排查错误堆栈信息" class="headerlink" title="排查错误堆栈信息"></a>排查错误堆栈信息</h2><p>根据错误堆栈，定位到<code>ASMDeserializerFactory</code>的第87行代码。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// com.alibaba.fastjson.parser.deserializer.ASMDeserializerFactory#createJavaBeanDeserializer</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">byte</span>[] code = cw.toByteArray();</span><br><span class="line"></span><br><span class="line">Class&lt;?&gt; deserClass = classLoader.defineClassPublic(classNameFull, code, <span class="number">0</span>, code.length);</span><br><span class="line"><span class="comment">// jvm这里会去动态加载class，而加载class过程中，需要验证class</span></span><br><span class="line">Constructor&lt;?&gt; constructor = deserClass.getConstructor(ParserConfig.class, JavaBeanInfo.class);</span><br></pre></td></tr></table></figure>
+
+<p>jvm在加载class时，需要进行:</p>
+<ol>
+<li>加载</li>
+<li>链接<ol>
+<li>验证</li>
+<li>准备</li>
+<li>解析</li>
+</ol>
+</li>
+<li>初始化</li>
+<li>使用</li>
+<li>卸载</li>
+</ol>
+<p>根据<code>java.lang.VerifyError</code>可以知道，在验证阶段出现了错误，那么先把生成的字节码保存到本地。</p>
+<h3 id="将字节码保存到本地"><a href="#将字节码保存到本地" class="headerlink" title="将字节码保存到本地"></a>将字节码保存到本地</h3><p>环境:</p>
+<ul>
+<li>jdk 11.0.9</li>
+<li>fastjson 1.2.76</li>
+<li>idea 2021</li>
+</ul>
+<p>操作过程: </p>
+<ol>
+<li><p>将断点设置在87行</p>
+</li>
+<li><p>在debug中，使用<code>Evaluate Expression</code>执行</p>
+ <figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Files.write(Paths.get(<span class="string">&quot;./LargeJavaBean.class&quot;</span>), code)</span><br></pre></td></tr></table></figure></li>
+</ol>
+<p>通过上面的操作，就拿到生成的class文件。</p>
+<h3 id="检查生成的class文件"><a href="#检查生成的class文件" class="headerlink" title="检查生成的class文件"></a>检查生成的class文件</h3><p>直接使用idea打开<code>LargeJavaBean.class</code>，可以发现<code>deserialze()</code>的方法体未能反编译。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// com.alibaba.fastjson.parser.deserializer.FastjsonASMDeserializer_1_LargeJavaBean#deserialze</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> Object <span class="title">deserialze</span><span class="params">(DefaultJSONParser param1, Type param2, Object param3, <span class="keyword">int</span> param4)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// $FF: Couldn&#x27;t be decompiled</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>回想起<a href="https://github.com/alibaba/fastjson/issues/2779">issue 2779</a>修复的<a href="https://github.com/alibaba/fastjson/pull/2858">pr 2858</a>中提到了可能是由于生成的字节码地址可能为负数。</p>
+<blockquote>
+<p>blindpirate:<br>在此之前，如果Java bean类过大，ASMDeserializerFactory生成的字节码中<br>的跳转地址如果超过了signed short能表示的范围，生成的字节码中的地址<br>可能是负数，即<br><code>ifeq -32455</code></p>
+</blockquote>
+<p>那么接下来尝试将class文件编译为jvm指令，</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">javap -v LargeJavaBean.class &gt; LargeJavaBean.txt</span><br></pre></td></tr></table></figure>
+
+<p>打开<code>LargeJavaBean.txt</code>，使用正则进行全文搜索</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">: .&#123;1,20&#125; *-</span><br></pre></td></tr></table></figure>
+<p>发现有一处指令符合该条件</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="number">120</span>: if_icmpeq     -<span class="number">32586</span></span><br></pre></td></tr></table></figure>
+<p>可以知道<code>if_icmpeq</code>跳转的目的地址溢出，成了负数。因此在jvm在验证该class时抛出了<code>java.lang.VerifyError</code></p>
+<h2 id="尝试修复bug"><a href="#尝试修复bug" class="headerlink" title="尝试修复bug"></a>尝试修复bug</h2><p>根据<a href="https://github.com/alibaba/fastjson/pull/2858">pr 2858</a>提到的方向，找到了在b站上一个解决该问题的视频<a href="https://www.bilibili.com/video/BV1JJ41197UK?share_source=copy_web">现场直播给阿里巴巴Fastjson修bug</a>。</p>
+<p>整体思路就是通过将对应的跳转语句转换为相反的跳转语句 + goto_w来实现。<br>例如:<code>ifeq</code>和<code>ifne + goto_w</code>在逻辑上是等价的。</p>
+<p>同时<code>goto_w</code>使用4个字节来保存跳转的目的地址，因此可以避免出现溢出的问题。</p>
+<h3 id="定位写入错误指令的代码位置"><a href="#定位写入错误指令的代码位置" class="headerlink" title="定位写入错误指令的代码位置"></a>定位写入错误指令的代码位置</h3><p>根据错误指令的上下文来看，</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="number">107</span>: invokevirtual #<span class="number">827</span>                <span class="comment">// Method com/alibaba/fastjson/parser/DefaultJSONParser.setContext:(Lcom/alibaba/fastjson/parser/ParseContext;Ljava/lang/Object;Ljava/lang/Object;)Lcom/alibaba/fastjson/parser/ParseContext;</span></span><br><span class="line"><span class="number">110</span>: astore        <span class="number">10</span></span><br><span class="line"><span class="number">112</span>: aload         <span class="number">5</span></span><br><span class="line"><span class="number">114</span>: getfield      #<span class="number">831</span>                <span class="comment">// Field com/alibaba/fastjson/parser/JSONLexerBase.matchStat:I</span></span><br><span class="line"><span class="number">117</span>: ldc_w         #<span class="number">832</span>                <span class="comment">// int 4</span></span><br><span class="line"><span class="number">120</span>: if_icmpeq     -<span class="number">32586</span></span><br><span class="line"><span class="number">123</span>: iconst_0</span><br><span class="line"><span class="number">124</span>: istore        <span class="number">11</span></span><br><span class="line"><span class="number">126</span>: iconst_0</span><br><span class="line"><span class="number">127</span>: istore        <span class="number">12</span></span><br></pre></td></tr></table></figure>
+<p>在写入<code>if_icmpeq</code>前会先写入<code>ldc_w</code>、<code>getfield</code>以及<code>invokevirtual</code>，通过这些关键字，定位到了<code>ASMDeserializerFactory</code>的702行代码: <code>mw.visitJumpInsn(IF_ICMPEQ, return_);</code></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// com.alibaba.fastjson.parser.deserializer.ASMDeserializerFactory#_deserialzeArrayMapping</span></span><br><span class="line"><span class="comment">// 684行 - 705行</span></span><br><span class="line">&#123;</span><br><span class="line">    mw.visitVarInsn(ALOAD, <span class="number">1</span>); <span class="comment">// parser</span></span><br><span class="line">    mw.visitMethodInsn(INVOKEVIRTUAL, DefaultJSONParser, <span class="string">&quot;getContext&quot;</span>, <span class="string">&quot;()&quot;</span> + desc(ParseContext.class));</span><br><span class="line">    mw.visitVarInsn(ASTORE, context.<span class="keyword">var</span>(<span class="string">&quot;context&quot;</span>));</span><br><span class="line"></span><br><span class="line">    mw.visitVarInsn(ALOAD, <span class="number">1</span>); <span class="comment">// parser</span></span><br><span class="line">    mw.visitVarInsn(ALOAD, context.<span class="keyword">var</span>(<span class="string">&quot;context&quot;</span>));</span><br><span class="line">    mw.visitVarInsn(ALOAD, context.<span class="keyword">var</span>(<span class="string">&quot;instance&quot;</span>));</span><br><span class="line">    mw.visitVarInsn(ALOAD, <span class="number">3</span>); <span class="comment">// fieldName</span></span><br><span class="line">    mw.visitMethodInsn(INVOKEVIRTUAL, DefaultJSONParser, <span class="string">&quot;setContext&quot;</span>, <span class="comment">//</span></span><br><span class="line">                        <span class="string">&quot;(&quot;</span> + desc(ParseContext.class) + <span class="string">&quot;Ljava/lang/Object;Ljava/lang/Object;)&quot;</span></span><br><span class="line">                                                                        + desc(ParseContext.class));</span><br><span class="line">    mw.visitVarInsn(ASTORE, context.<span class="keyword">var</span>(<span class="string">&quot;childContext&quot;</span>));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">mw.visitVarInsn(ALOAD, context.<span class="keyword">var</span>(<span class="string">&quot;lexer&quot;</span>));</span><br><span class="line">mw.visitFieldInsn(GETFIELD, JSONLexerBase, <span class="string">&quot;matchStat&quot;</span>, <span class="string">&quot;I&quot;</span>);</span><br><span class="line">mw.visitLdcInsn(com.alibaba.fastjson.parser.JSONLexerBase.END);</span><br><span class="line"><span class="comment">// 这里的跳转地址溢出了</span></span><br><span class="line">mw.visitJumpInsn(IF_ICMPEQ, return_);</span><br><span class="line"></span><br><span class="line">mw.visitInsn(ICONST_0); <span class="comment">// UNKOWN</span></span><br><span class="line">mw.visitIntInsn(ISTORE, context.<span class="keyword">var</span>(<span class="string">&quot;matchStat&quot;</span>));</span><br></pre></td></tr></table></figure>
+
+<h3 id="试着修复bug"><a href="#试着修复bug" class="headerlink" title="试着修复bug"></a>试着修复bug</h3><figure class="highlight diff"><table><tr><td class="code"><pre><span class="line"><span class="deletion">- mw.visitJumpInsn(IF_ICMPEQ, return_);</span></span><br><span class="line"><span class="addition">+ Label continue_3 = new Label();</span></span><br><span class="line"><span class="addition">+ mw.visitJumpInsn(IF_ICMPNE, continue_3);</span></span><br><span class="line"><span class="addition">+ mw.visitJumpInsn(GOTO_W, return_);</span></span><br><span class="line"><span class="addition">+ mw.visitLabel(continue_3);</span></span><br></pre></td></tr></table></figure>
+
+<p>思路就是使用<code>if_icmpne + goto_w</code>替换掉<code>if_icmpeq</code>来规避跳转的目的地址溢出的问题。</p>
+<h1 id="新的问题"><a href="#新的问题" class="headerlink" title="新的问题"></a>新的问题</h1><p>在跟同事讨论构造稳定复现该bug的用例时，发现不仅仅是之前提到的跳转有问题，而是在多处跳转都有可能会溢出。新的bug见<a href="https://github.com/alibaba/fastjson/issues/3794">issue 3794</a>，该issue提供了一个新的测试用例，发现只要字段是96个时就会出现<code>java.lang.VerifyError</code>，同时生成的字节码目的地址为负数</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">if_icmpne -17541</span><br></pre></td></tr></table></figure>
+<p>由于出现该错误的地方很多，也没时间再去一步步定位问题，目前在考虑项目中使用gson来代替fastjon。</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><ol>
+<li>fastjosn的这个bug的源头还是来自于底层使用的asm库版本过低导致的，新版本的asm库修复了很多由于跳转地址溢出的问题。希望fastjson能够把asm库的新版本代码合进去。</li>
+<li>项目中使用的bean不会太大时，使用fastjson是通常没有问题的，如果出现了该问题，又仍然得继续用fastjson时，可以考虑使用<code>fieldBase = true</code>来避免使用asm来生成字节码。具体的使用方式见<a href="https://github.com/alibaba/fastjson/wiki/FieldBased_cn">FieldBased_cn</a>。</li>
+</ol>
+]]></content>
+      <tags>
+        <tag>java</tag>
+        <tag>fastjson</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>关于折腾github pages那些事</title>
     <url>/2021/05/17/%E5%85%B3%E4%BA%8E%E6%8A%98%E8%85%BEgithub-pages%E9%82%A3%E4%BA%9B%E4%BA%8B/</url>
     <content><![CDATA[<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>之前用过CSDN来写博客，但由于CSDN越来越拉，不得已就自建博客了。由于之前阿里云到期，现在在折腾腾讯云，自建博客也凉凉。于是就干脆折腾下github pages。</p>
