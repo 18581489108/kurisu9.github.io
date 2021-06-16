@@ -4,7 +4,9 @@ tags:
   - hexo
   - docker
   - wsl2
+date: 2021-06-16 16:07:53
 ---
+
 # 前言
 之前折腾了一下NUC玩游戏，不过最后还是得爬去写代码。
 
@@ -25,8 +27,12 @@ FROM node:current-alpine3.13
 WORKDIR /app
 EXPOSE 4000
 
+# 需要安装git，否则在执行hexo init时会失败
 # 使用taobao的镜像加速npm
-RUN npm --registry=https://registry.npm.taobao.org install hexo-cli -g
+RUN apk update && \
+    apk upgrade && \
+    apk add --no-cache bash git openssh && \
+    npm --registry=https://registry.npm.taobao.org install hexo-cli -g
 
 # Entry point
 COPY ./entrypoint.sh /entrypoint.sh
@@ -73,7 +79,11 @@ docker run -d --name <container name> \
 * ```kurisu9/hexo-util```替换为自己的镜像名
 
 ## 测试
-// TODO 补上从0开始的配置hexo
+在浏览器中访问 [http://localhost:4000/](http://localhost:4000/)
+
+![hexo初始界面](https://gitee.com/makise.kurisu/filestorage/raw/master/images/blog/%E4%BB%8E%E9%9B%B6%E5%BC%80%E5%A7%8B%E7%9A%84%E6%9E%84%E5%BB%BAhexo%E5%B7%A5%E5%85%B7%E9%95%9C%E5%83%8F/hexo%E5%88%9D%E5%A7%8B%E7%95%8C%E9%9D%A2.png)
+
+如果正常打开该网页，那么hexo初始化成功。
 
 ## 配置git插件
 如果需要直接推送到github，那么需要安装git插件。
@@ -100,3 +110,6 @@ docker push kurisu9/hexo-util
 
 # 结束
 docker作为本地开发仍然是一款最佳的容器工具，基于docekr镜像，可以极大节省配置开发环境的时间。
+
+# 参考
+* [在Docker中安装Git](https://blog.csdn.net/csu_passer/article/details/99995351)
