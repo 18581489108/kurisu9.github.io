@@ -65,7 +65,8 @@
 <h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>日常使用日志输出时，只是输出简单日志，有时候没法溯源，所以偶尔需要在日志输出的同时输出相关的堆栈信息，以便更好的定位问题。</p>
 ]]></content>
       <tags>
-        <tag>-- java -- log4j2</tag>
+        <tag>java</tag>
+        <tag>log4j2</tag>
       </tags>
   </entry>
   <entry>
@@ -335,6 +336,40 @@
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">npm install hexo-deployer-git --save</span><br></pre></td></tr></table></figure>]]></content>
       <tags>
         <tag>折腾</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>在golang开发容器中设置GOPROXY</title>
+    <url>/2021/06/19/%E5%9C%A8golang%E5%BC%80%E5%8F%91%E5%AE%B9%E5%99%A8%E4%B8%AD%E8%AE%BE%E7%BD%AEGOPROXY/</url>
+    <content><![CDATA[<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>通过vscode+wsl2+docker进行golang的开发，避免了本机配置环境的繁琐。</p>
+<p>配置golang开发容器，可以参考:</p>
+<ul>
+<li><a href="https://code.visualstudio.com/docs/remote/containers">Developing inside a Container</a></li>
+<li><a href="https://code.visualstudio.com/docs/remote/containers-tutorial">Remote development in Containers</a></li>
+</ul>
+<h1 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h1><p>在使用<code>go get golang.org/x</code>拉去包时，会由于<code>https://golang.org/</code>被墙掉而拉取失败。</p>
+<p>在本地开发时，通常会设置<code>GOPROXY</code>来进行代理。所以即使在容器中开发，也通常建议配置<code>GOPROXY</code>。</p>
+<h1 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h1><h2 id="无效方式"><a href="#无效方式" class="headerlink" title="无效方式"></a>无效方式</h2><p>进入容器，如果像本地开发那样，直接设置<code>GOPROXY</code>，</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">export</span> GOPROXY=https://goproxy.io,direct</span><br></pre></td></tr></table></figure>
+
+<p>查看环境变量</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">go env</span><br></pre></td></tr></table></figure>
+<p>可以看到已经设置上了</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">GOPROXY=<span class="string">&quot;https://goproxy.io,direct&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>但是呢，这时候再使用gopls进行包的安装，仍然会走<code>https://golang.org/</code>，所以只是在容器里进行<code>GOPROXY</code>的设置是没有效果的。</p>
+<h2 id="有效方式"><a href="#有效方式" class="headerlink" title="有效方式"></a>有效方式</h2><p>在<code>.devcontainer/devcontainer.json</code>中配置环境变量</p>
+<figure class="highlight json"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">&quot;remoteEnv&quot;</span>: &#123;</span><br><span class="line">		  <span class="attr">&quot;GOPROXY&quot;</span>: <span class="string">&quot;https://goproxy.io,direct&quot;</span></span><br><span class="line">	  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在配置文件中增加<code>remoteEnv</code>项，并设置<code>GOPROXY</code>。</p>
+<p>配置结束以后，重新构建容器即可。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://code.visualstudio.com/docs/remote/devcontainerjson-reference">devcontainer.json reference</a></li>
+</ul>
+]]></content>
+      <tags>
+        <tag>docker</tag>
+        <tag>vscode</tag>
+        <tag>golang</tag>
       </tags>
   </entry>
 </search>
