@@ -2,8 +2,8 @@
 title: log4j2输出方法堆栈
 date: 2021-06-10 10:36:05
 tags:
-  -- java
-  -- log4j2
+  - java
+  - log4j2
 ---
 
 # 前言
