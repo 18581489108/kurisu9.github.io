@@ -163,7 +163,7 @@ func generateSalt(username string) (string, error) {
 ```
 
 1. 将username和随机生成的20位字符串进行拼接，这样可以保证每个用户的salt是唯一的。
-2. 最后使用bcrypt进行hash处理
+2. 最后使用bcrypt进行hash处理。
 
 注: bcrypt.GenerateFromPassword方法本身也会再加一次salt，所以在生成salt时要不要先加salt就需要自己衡量了。
 
@@ -181,10 +181,123 @@ func hashPassword(password string, salt string) (string, error) {
 }
 ```
 
-1. 将前面生成的salt与原始密码进行拼接
-2. 再使用bcrypt进行hash处理
+1. 将前面生成的salt与原始密码进行拼接。
+2. 再使用bcrypt进行hash处理。
 
 ## 登录
+登录时同样需要处理由前端传递的username和password，这里不考虑前端传递password是否要进行加密。
+### 基础流程
+```golang
+// internal/app/authjwtdemo/handler/auth.go
+
+type LoginInput struct {
+	UserName string `json:"username" validate:"required,min=3,max=20"`
+	Password string `json:"password" validate:"required,min=3,max=20"`
+}
+
+func Login(ctx *fiber.Ctx) error {
+	var input LoginInput
+	if err := bodyParserAndValidate(&input, ctx); err != nil {
+		return err
+	}
+
+	username := input.UserName
+	password := input.Password
+
+	userBase, err := getUserByUsername(username)
+	if err != nil {
+		return UnauthorizedError(ctx, "Error on username", err)
+	}
+
+	if userBase == nil {
+		return UnauthorizedError(ctx, "User not found", username)
+	}
+
+	if !checkPasswordHash(userBase, password) {
+		return UnauthorizedError(ctx, "Invalid password", nil)
+	}
+
+	jwtSalt := middleware.GenerateJwtSecretSalt(userBase.Salt)
+	secret := middleware.GenerateJwtSecret(jwtSalt)
+	if secret == "" {
+		return UnauthorizedError(ctx, "Generate secret failed", nil)
+	}
+
+	t, err := middleware.GenerateJwtToken(userBase, secret, config.Config.JwtConfig.TokenExpiration)
+	if err != nil {
+		log.Println(err)
+		return ctx.SendStatus(fiber.StatusInternalServerError)
+	}
+
+	// 写入redis
+	// 进行过时的处理
+	redis.Template.SetEX(rediskey.FormatJwtSaltRedisKey(userBase.ID), jwtSalt, config.Config.JwtConfig.TokenSaltExpiration)
+	return SuccessError(ctx, "Success login", middleware.JWTAuthScheme+" "+t)
+}
+```
+登录中比较核心逻辑在于比对用户输入的密码和数据库中的密码是否一致。在登录成功以后，需要为用户生成token。
+
+在生成token以后，需要在redis中缓存生成token的jwt salt。
+
+### 检查密码是否一致
+```golang
+// internal/app/authjwtdemo/handler/auth.go
+
+func checkPasswordHash(userBase *model.UserBase, originPassword string) bool {
+	// CompareHashAndPassword这方法是真滴慢，估计得考虑降低cost
+	err := bcrypt.CompareHashAndPassword([]byte(userBase.Password), []byte(addSaltToPassword(originPassword, userBase.Salt)))
+	return err == nil
+}
+```
+
+1. 对输入的密码进行同样的加盐处理。
+2. 使用bcrypt.CompareHashAndPassword比较数据中的密码，与输入的密码是否一致。
+
+### 生成jwt secret
+```golang
+// internal/app/authjwtdemo/middleware/auth.go
+
+// 生成用于jwt的密匙 salt
+func GenerateJwtSecretSalt(userSalt string) string {
+	return fmt.Sprintf("%s.%d", userSalt, timeutil.CurrentTimeMillis())
+}
+
+// 生成jwt的密钥
+func GenerateJwtSecret(salt string) string {
+	staticSecret := config.Config.JwtConfig.PrivateSecret
+	return fmt.Sprintf("%x", md5.Sum([]byte(salt+"."+staticSecret)))
+}
+```
+
+1. 根据用户的salt以及登录时间戳生成jwt的salt。
+2. 将jwt salt与配置文件中的private secret进行拼接后，使用md5处理，得到最终的jwt secret。
+
+### 生成JWT
+```golang
+// internal/app/authjwtdemo/middleware/auth.go
+
+// 生成jwt token
+func GenerateJwtToken(userBase *model.UserBase, secret string, expiration time.Duration) (string, error) {
+	claims := UserClaims{
+		UserSimpleInfo{
+			Username: userBase.Username,
+			UserId:   userBase.ID,
+		},
+		jwt.StandardClaims{
+			ExpiresAt: timeutil.NextTimeSeconds(expiration),
+			Issuer:    config.Config.JwtConfig.Issuer,
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(secret))
+}
+```
+
+1. 将基本的、非敏感的用户数据写入到claims中，以及token的过期时间等信息。
+2. 最后使用前面的jwt secret生成JWT。
+
+注: JWT中通常建议存储一些非敏感的数据，如果需要存储敏感数据，那么一定要做好加密措施。同时不要在JWT中存储过多、过长的数据，否则在每次请求中都是一个很大的开销，且有些浏览器会对过长的JWT进行截断操作。
 
 ## 验证token
 
