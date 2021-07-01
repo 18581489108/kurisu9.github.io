@@ -48,12 +48,62 @@ tags:
 
 # 实现方案
 ## 项目结构
+整体项目结构如下: 
+```bash
+├── README.md      
+├── cmd
+│   └── authjwtdemo
+│       └── Main.go
+├── configs        
+│   └── app.yaml   
+├── go.mod
+├── go.sum
+└── internal       
+    ├── app        
+    │   └── authjwtdemo
+    │       ├── auth_jwt_demo.go
+    │       ├── config
+    │       │   └── config.go
+    │       ├── def
+    │       │   └── rediskey
+    │       │       └── redis_key.go
+    │       ├── handler
+    │       │   ├── api.go
+    │       │   ├── auth.go
+    │       │   ├── base_handler.go
+    │       │   └── product.go
+    │       ├── middleware
+    │       │   ├── auth.go
+    │       │   └── auth_test.go
+    │       ├── model
+    │       │   ├── init_model.go
+    │       │   ├── product.go
+    │       │   └── user_base.go
+    │       └── router
+    │           └── router.go
+    └── pkg
+        ├── database
+        │   └── connect.go
+        ├── random
+        │   └── randstr
+        │       └── randstr.go
+        ├── redis
+        │   ├── go_redis_template.go
+        │   ├── go_redis_template_test.go
+        │   └── redis_template.go
+        └── timeutil
+            └── timeutil.go
+```
+
+项目结构参考了[golang-standards/project-layout](https://github.com/golang-standards/project-layout)。
+
+实现了注册、登录、token验证、登出等逻辑。
 
 ## 注册
 
 ## 登录
 
-## 鉴权
+## 验证token
 
 # 结束
 回到开始提出的三个问题，
@@ -69,3 +119,4 @@ A:
 * [jwt-go](https://pkg.go.dev/github.com/form3tech-oss/jwt-go@v3.2.3+incompatible?utm_source=gopls#section-readme)
 * [auth-jwt](https://github.com/gofiber/recipes/tree/master/auth-jwt)
 * [JWT validation with JWKS golang](https://stackoverflow.com/questions/61850992/jwt-validation-with-jwks-golang)
+* [golang-standards/project-layout](https://github.com/golang-standards/project-layout)
