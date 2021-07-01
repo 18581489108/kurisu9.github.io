@@ -97,9 +97,92 @@ tags:
 
 项目结构参考了[golang-standards/project-layout](https://github.com/golang-standards/project-layout)。
 
+完整源码见[kurisu9az/jwt-auth-demo](https://github.com/kurisu9az/jwt-auth-demo)
+
 实现了注册、登录、token验证、登出等逻辑。
 
 ## 注册
+注册时，需要处理由前端传递的username和password，这里不考虑前端传递password是否要进行加密。
+### 基础流程
+```golang
+// internal/app/authjwtdemo/handler/auth.go
+
+type RegisterInput struct {
+	UserName string `json:"username" validate:"required,min=3,max=20"`
+	Password string `json:"password" validate:"required,min=3,max=20"`
+}
+
+func Register(ctx *fiber.Ctx) error {
+	var input RegisterInput
+	if err := bodyParserAndValidate(&input, ctx); err != nil {
+		return err
+	}
+
+	username := input.UserName
+	password := input.Password
+
+	userBase := new(model.UserBase)
+	userBase.Username = username
+
+	// 生成salt
+	salt, err := generateSalt(username)
+	if err != nil {
+		return InternalServerError(ctx, "Couldn't generate salt", err)
+	}
+	userBase.Salt = salt
+
+	// 对密码进行hash
+	hashedPassword, err := hashPassword(password, userBase.Salt)
+	if err != nil {
+		return InternalServerError(ctx, "Couldn't hash password", err)
+	}
+	userBase.Password = hashedPassword
+
+	db := database.DB
+	if err := db.Create(&userBase).Error; err != nil {
+		return InternalServerError(ctx, "Couldn't create user", err)
+	}
+
+	return SuccessError(ctx, "Register Success", input)
+}
+```
+
+上述流程中，比较核心的地方在于salt的生成以及对密码的hash。
+
+### 生成slat
+```golang
+// internal/app/authjwtdemo/handler/auth.go
+
+func generateSalt(username string) (string, error) {
+	// TODO 随机字符串的长度可以考虑读取配置
+	str := randstr.RandomAscii(20)
+
+	bytes, err := bcrypt.GenerateFromPassword([]byte(username+"."+str), 14)
+	return string(bytes), err
+}
+```
+
+1. 将username和随机生成的20位字符串进行拼接，这样可以保证每个用户的salt是唯一的。
+2. 最后使用bcrypt进行hash处理
+
+注: bcrypt.GenerateFromPassword方法本身也会再加一次salt，所以在生成salt时要不要先加salt就需要自己衡量了。
+
+### 对密码进行hash
+```golang
+// internal/app/authjwtdemo/handler/auth.go
+
+func addSaltToPassword(password string, salt string) string {
+	return password + "." + salt
+}
+
+func hashPassword(password string, salt string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(addSaltToPassword(password, salt)), 14)
+	return string(bytes), err
+}
+```
+
+1. 将前面生成的salt与原始密码进行拼接
+2. 再使用bcrypt进行hash处理
 
 ## 登录
 
