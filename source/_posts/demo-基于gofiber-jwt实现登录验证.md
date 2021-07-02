@@ -5,11 +5,13 @@ tags:
   - golang
   - gofiber
   - jwt
+date: 2021-07-02 10:38:04
 ---
+
 # 前言
 在分布式项目中，传统的session进行用户的登录验证已经力不从心，使用token代替seesion也逐渐成为了一种趋势。最近在拿gofiber写demo中时，为了后续再扩展为分布式应用，于是结合jwt实现了一套简单的登录验证系统。
 
-在实现token验证系统中，需要解决的问题:
+在实现鉴权系统中，需要解决的问题:
 * 密码泄漏
 * 生成jwt的secret泄漏
 * 修改密码后，使旧的jwt失效
@@ -108,42 +110,42 @@ tags:
 // internal/app/authjwtdemo/handler/auth.go
 
 type RegisterInput struct {
-    UserName string `json:"username" validate:"required,min=3,max=20"`
-    Password string `json:"password" validate:"required,min=3,max=20"`
+	UserName string `json:"username" validate:"required,min=3,max=20"`
+	Password string `json:"password" validate:"required,min=3,max=20"`
 }
 
 func Register(ctx *fiber.Ctx) error {
-    var input RegisterInput
-    if err := bodyParserAndValidate(&input, ctx); err != nil {
-        return err
-    }
+	var input RegisterInput
+	if err := bodyParserAndValidate(&input, ctx); err != nil {
+		return err
+	}
 
-    username := input.UserName
-    password := input.Password
+	username := input.UserName
+	password := input.Password
 
-    userBase := new(model.UserBase)
-    userBase.Username = username
+	userBase := new(model.UserBase)
+	userBase.Username = username
 
-    // 生成salt
-    salt, err := generateSalt(username)
-    if err != nil {
-        return InternalServerError(ctx, "Couldn't generate salt", err)
-    }
-    userBase.Salt = salt
+	// 生成salt
+	salt, err := generateSalt(username)
+	if err != nil {
+		return InternalServerError(ctx, "Couldn't generate salt", err)
+	}
+	userBase.Salt = salt
 
-    // 对密码进行hash
-    hashedPassword, err := hashPassword(password, userBase.Salt)
-    if err != nil {
-        return InternalServerError(ctx, "Couldn't hash password", err)
-    }
-    userBase.Password = hashedPassword
+	// 对密码进行hash
+	hashedPassword, err := hashPassword(password, userBase.Salt)
+	if err != nil {
+		return InternalServerError(ctx, "Couldn't hash password", err)
+	}
+	userBase.Password = hashedPassword
 
-    db := database.DB
-    if err := db.Create(&userBase).Error; err != nil {
-        return InternalServerError(ctx, "Couldn't create user", err)
-    }
+	db := database.DB
+	if err := db.Create(&userBase).Error; err != nil {
+		return InternalServerError(ctx, "Couldn't create user", err)
+	}
 
-    return SuccessError(ctx, "Register Success", input)
+	return SuccessError(ctx, "Register Success", input)
 }
 ```
 
@@ -154,11 +156,11 @@ func Register(ctx *fiber.Ctx) error {
 // internal/app/authjwtdemo/handler/auth.go
 
 func generateSalt(username string) (string, error) {
-    // TODO 随机字符串的长度可以考虑读取配置
-    str := randstr.RandomAscii(20)
+	// TODO 随机字符串的长度可以考虑读取配置
+	str := randstr.RandomAscii(20)
 
-    bytes, err := bcrypt.GenerateFromPassword([]byte(username+"."+str), 14)
-    return string(bytes), err
+	bytes, err := bcrypt.GenerateFromPassword([]byte(username+"."+str), 14)
+	return string(bytes), err
 }
 ```
 
@@ -172,12 +174,12 @@ func generateSalt(username string) (string, error) {
 // internal/app/authjwtdemo/handler/auth.go
 
 func addSaltToPassword(password string, salt string) string {
-    return password + "." + salt
+	return password + "." + salt
 }
 
 func hashPassword(password string, salt string) (string, error) {
-    bytes, err := bcrypt.GenerateFromPassword([]byte(addSaltToPassword(password, salt)), 14)
-    return string(bytes), err
+	bytes, err := bcrypt.GenerateFromPassword([]byte(addSaltToPassword(password, salt)), 14)
+	return string(bytes), err
 }
 ```
 
@@ -191,48 +193,48 @@ func hashPassword(password string, salt string) (string, error) {
 // internal/app/authjwtdemo/handler/auth.go
 
 type LoginInput struct {
-    UserName string `json:"username" validate:"required,min=3,max=20"`
-    Password string `json:"password" validate:"required,min=3,max=20"`
+	UserName string `json:"username" validate:"required,min=3,max=20"`
+	Password string `json:"password" validate:"required,min=3,max=20"`
 }
 
 func Login(ctx *fiber.Ctx) error {
-    var input LoginInput
-    if err := bodyParserAndValidate(&input, ctx); err != nil {
-        return err
-    }
+	var input LoginInput
+	if err := bodyParserAndValidate(&input, ctx); err != nil {
+		return err
+	}
 
-    username := input.UserName
-    password := input.Password
+	username := input.UserName
+	password := input.Password
 
-    userBase, err := getUserByUsername(username)
-    if err != nil {
-        return UnauthorizedError(ctx, "Error on username", err)
-    }
+	userBase, err := getUserByUsername(username)
+	if err != nil {
+		return UnauthorizedError(ctx, "Error on username", err)
+	}
 
-    if userBase == nil {
-        return UnauthorizedError(ctx, "User not found", username)
-    }
+	if userBase == nil {
+		return UnauthorizedError(ctx, "User not found", username)
+	}
 
-    if !checkPasswordHash(userBase, password) {
-        return UnauthorizedError(ctx, "Invalid password", nil)
-    }
+	if !checkPasswordHash(userBase, password) {
+		return UnauthorizedError(ctx, "Invalid password", nil)
+	}
 
-    jwtSalt := middleware.GenerateJwtSecretSalt(userBase.Salt)
-    secret := middleware.GenerateJwtSecret(jwtSalt)
-    if secret == "" {
-        return UnauthorizedError(ctx, "Generate secret failed", nil)
-    }
+	jwtSalt := middleware.GenerateJwtSecretSalt(userBase.Salt)
+	secret := middleware.GenerateJwtSecret(jwtSalt)
+	if secret == "" {
+		return UnauthorizedError(ctx, "Generate secret failed", nil)
+	}
 
-    t, err := middleware.GenerateJwtToken(userBase, secret, config.Config.JwtConfig.TokenExpiration)
-    if err != nil {
-        log.Println(err)
-        return ctx.SendStatus(fiber.StatusInternalServerError)
-    }
+	t, err := middleware.GenerateJwtToken(userBase, secret, config.Config.JwtConfig.TokenExpiration)
+	if err != nil {
+		log.Println(err)
+		return ctx.SendStatus(fiber.StatusInternalServerError)
+	}
 
-    // 写入redis
-    // 进行过时的处理
-    redis.Template.SetEX(rediskey.FormatJwtSaltRedisKey(userBase.ID), jwtSalt, config.Config.JwtConfig.TokenSaltExpiration)
-    return SuccessError(ctx, "Success login", middleware.JWTAuthScheme+" "+t)
+	// 写入redis
+	// 进行过时的处理
+	redis.Template.SetEX(rediskey.FormatJwtSaltRedisKey(userBase.ID), jwtSalt, config.Config.JwtConfig.TokenSaltExpiration)
+	return SuccessError(ctx, "Success login", middleware.JWTAuthScheme+" "+t)
 }
 ```
 登录中比较核心逻辑在于比对用户输入的密码和数据库中的密码是否一致。在登录成功以后，需要为用户生成token。
@@ -244,9 +246,9 @@ func Login(ctx *fiber.Ctx) error {
 // internal/app/authjwtdemo/handler/auth.go
 
 func checkPasswordHash(userBase *model.UserBase, originPassword string) bool {
-    // CompareHashAndPassword这方法是真滴慢，估计得考虑降低cost
-    err := bcrypt.CompareHashAndPassword([]byte(userBase.Password), []byte(addSaltToPassword(originPassword, userBase.Salt)))
-    return err == nil
+	// CompareHashAndPassword这方法是真滴慢，估计得考虑降低cost
+	err := bcrypt.CompareHashAndPassword([]byte(userBase.Password), []byte(addSaltToPassword(originPassword, userBase.Salt)))
+	return err == nil
 }
 ```
 
@@ -259,13 +261,13 @@ func checkPasswordHash(userBase *model.UserBase, originPassword string) bool {
 
 // 生成用于jwt的密匙 salt
 func GenerateJwtSecretSalt(userSalt string) string {
-    return fmt.Sprintf("%s.%d", userSalt, timeutil.CurrentTimeMillis())
+	return fmt.Sprintf("%s.%d", userSalt, timeutil.CurrentTimeMillis())
 }
 
 // 生成jwt的密钥
 func GenerateJwtSecret(salt string) string {
-    staticSecret := config.Config.JwtConfig.PrivateSecret
-    return fmt.Sprintf("%x", md5.Sum([]byte(salt+"."+staticSecret)))
+	staticSecret := config.Config.JwtConfig.PrivateSecret
+	return fmt.Sprintf("%x", md5.Sum([]byte(salt+"."+staticSecret)))
 }
 ```
 
@@ -278,19 +280,19 @@ func GenerateJwtSecret(salt string) string {
 
 // 生成jwt token
 func GenerateJwtToken(userBase *model.UserBase, secret string, expiration time.Duration) (string, error) {
-    claims := UserClaims{
-        UserSimpleInfo{
-            Username: userBase.Username,
-            UserId:   userBase.ID,
-        },
-        jwt.StandardClaims{
-            ExpiresAt: timeutil.NextTimeSeconds(expiration),
-            Issuer:    config.Config.JwtConfig.Issuer,
-        },
-    }
+	claims := UserClaims{
+		UserSimpleInfo{
+			Username: userBase.Username,
+			UserId:   userBase.ID,
+		},
+		jwt.StandardClaims{
+			ExpiresAt: timeutil.NextTimeSeconds(expiration),
+			Issuer:    config.Config.JwtConfig.Issuer,
+		},
+	}
 
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    return token.SignedString([]byte(secret))
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(secret))
 }
 ```
 
@@ -304,46 +306,46 @@ func GenerateJwtToken(userBase *model.UserBase, secret string, expiration time.D
 
 ```golang
 func JWTAuthMiddleware() fiber.Handler {
-    return func(c *fiber.Ctx) error {
-        auth, err := jwtFromHeader(c, fiber.HeaderAuthorization, JWTAuthScheme)
-        if err != nil {
-            c.Status(fiber.StatusBadRequest)
-            return c.JSON(fiber.Map{"status": "error", "message": "Missing or malformed JWT", "data": nil})
-        }
+	return func(c *fiber.Ctx) error {
+		auth, err := jwtFromHeader(c, fiber.HeaderAuthorization, JWTAuthScheme)
+		if err != nil {
+			c.Status(fiber.StatusBadRequest)
+			return c.JSON(fiber.Map{"status": "error", "message": "Missing or malformed JWT", "data": nil})
+		}
 
-        token, err := jwt.ParseWithClaims(auth, &UserClaims{}, func(t *jwt.Token) (interface{}, error) {
-            userClaims, ok := t.Claims.(*UserClaims)
-            if !ok {
-                return nil, errors.New("not support Claims")
-            }
+		token, err := jwt.ParseWithClaims(auth, &UserClaims{}, func(t *jwt.Token) (interface{}, error) {
+			userClaims, ok := t.Claims.(*UserClaims)
+			if !ok {
+				return nil, errors.New("not support Claims")
+			}
 
-            userId := userClaims.UserInfo.UserId
-            if userId <= 0 {
-                return nil, errors.New("invalid user id ")
-            }
+			userId := userClaims.UserInfo.UserId
+			if userId <= 0 {
+				return nil, errors.New("invalid user id ")
+			}
 
-            salt := redis.Template.Get(rediskey.FormatJwtSaltRedisKey(userId))
-            if salt == "" {
-                return nil, errors.New("not found salt")
-            }
+			salt := redis.Template.Get(rediskey.FormatJwtSaltRedisKey(userId))
+			if salt == "" {
+				return nil, errors.New("not found salt")
+			}
 
-            secret := GenerateJwtSecret(salt)
-            if secret == "" {
-                return nil, errors.New("secret generate failed")
-            }
-            return []byte(secret), nil
-        })
+			secret := GenerateJwtSecret(salt)
+			if secret == "" {
+				return nil, errors.New("secret generate failed")
+			}
+			return []byte(secret), nil
+		})
 
-        if err == nil && token.Valid {
-            // Store user information from token into context.
-            userClaims := token.Claims.(*UserClaims)
-            c.Locals(UserInfoKey, &userClaims.UserInfo)
-            return c.Next()
-        }
+		if err == nil && token.Valid {
+			// Store user information from token into context.
+			userClaims := token.Claims.(*UserClaims)
+			c.Locals(UserInfoKey, &userClaims.UserInfo)
+			return c.Next()
+		}
 
-        c.Status(fiber.StatusUnauthorized)
-        return c.JSON(fiber.Map{"status": "error", "message": "Invalid or expired JWT", "data": nil})
-    }
+		c.Status(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{"status": "error", "message": "Invalid or expired JWT", "data": nil})
+	}
 }
 ```
 
@@ -355,14 +357,14 @@ func JWTAuthMiddleware() fiber.Handler {
 登出后，需要保证旧的token失效。如果只是根据JWT的过期时间来限制，那么玩家登出以后JWT不会立即失效。因此通过移除redis中的jwt salt即可以保证JWT立即过期。
 ```golang
 func Logout(ctx *fiber.Ctx) error {
-    userInfo := ctx.Locals(middleware.UserInfoKey).(*middleware.UserSimpleInfo)
-    redis.Template.Del(rediskey.FormatJwtSaltRedisKey(userInfo.UserId))
-    return SuccessError(ctx, "Logout success", userInfo.UserId)
+	userInfo := ctx.Locals(middleware.UserInfoKey).(*middleware.UserSimpleInfo)
+	redis.Template.Del(rediskey.FormatJwtSaltRedisKey(userInfo.UserId))
+	return SuccessError(ctx, "Logout success", userInfo.UserId)
 }
 ```
 
 # 结束
-回到开始提出的三个问题，回顾下是如何解决的。
+回到开始提出的三个问题，
 
 ### 如何解决密码泄漏
 通过对原始密码进行加盐处理后，在数据库中只存储被hash过的密码，即使数据库泄漏，也没法反推出用户的原始密码。
@@ -370,7 +372,7 @@ func Logout(ctx *fiber.Ctx) error {
 ### 如何防止生成jwt的secret泄漏
 1. 没有直接存储jwt secret，因此不存在直接泄漏的问题。
 2. 生成jwt secret时，依赖了用户salt、登录时间戳，以及配置文件中的private secret。只要private secret没有泄漏，就算是知道了jwt secret的生成算法，也无法伪造出合法的jwt。
-3. 验证token时，需要依赖缓存在redis中的jwt salt，即使伪造出了jwt，也没法通过验证。
+3. 将jwt salt缓存在redis中，可以提高token验证的效率。
 
 ### 如何在修改密码后，使旧的jwt失效
 修改密码后，通常需要伴随重新登录，所以只需要在修改完密码以后，移除掉redis中的jwt salt即可。在重新登录以后，会生成新的jwt salt，所以旧的jwt是会验证失败。
