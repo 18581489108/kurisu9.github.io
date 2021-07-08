@@ -19,19 +19,19 @@
     var CONFIG = {"hostname":"kurisu9az.github.io","root":"/","scheme":"Pisces","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":true,"comments":{"style":"tabs","active":"gitalk","storage":true,"lazyload":false,"nav":null,"activeClass":"gitalk"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":5,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="前言在分布式项目中，传统的session进行用户的登录验证已经力不从心，使用token代替seesion也逐渐成为了一种趋势。最近在拿gofiber写demo中时，为了后续再扩展为分布式应用，于是结合jwt实现了一套简单的登录验证系统。 在实现鉴权系统中，需要解决的问题:  密码泄漏 生成jwt的secret泄漏 修改密码后，使旧的jwt失效  设计思路注册  通过username + 随机字符串">
+  <meta name="description" content="前言在分布式项目中，传统的session进行用户的登录验证已经力不从心，使用token代替seesion也逐渐成为了一种趋势。最近在拿gofiber写demo中时，为了后续再扩展为分布式应用，于是结合jwt实现了一套简单的登录验证系统。 在实现登录验证系统中，需要解决的问题:  密码泄漏 生成jwt的secret泄漏 修改密码后，使旧的jwt失效  设计思路注册  通过username + 随机字">
 <meta property="og:type" content="article">
 <meta property="og:title" content="demo: 基于gofiber + jwt实现登录验证">
 <meta property="og:url" content="https://kurisu9az.github.io/2021/07/02/demo-%E5%9F%BA%E4%BA%8Egofiber-jwt%E5%AE%9E%E7%8E%B0%E7%99%BB%E5%BD%95%E9%AA%8C%E8%AF%81/index.html">
 <meta property="og:site_name" content="kurisu9">
-<meta property="og:description" content="前言在分布式项目中，传统的session进行用户的登录验证已经力不从心，使用token代替seesion也逐渐成为了一种趋势。最近在拿gofiber写demo中时，为了后续再扩展为分布式应用，于是结合jwt实现了一套简单的登录验证系统。 在实现鉴权系统中，需要解决的问题:  密码泄漏 生成jwt的secret泄漏 修改密码后，使旧的jwt失效  设计思路注册  通过username + 随机字符串">
+<meta property="og:description" content="前言在分布式项目中，传统的session进行用户的登录验证已经力不从心，使用token代替seesion也逐渐成为了一种趋势。最近在拿gofiber写demo中时，为了后续再扩展为分布式应用，于是结合jwt实现了一套简单的登录验证系统。 在实现登录验证系统中，需要解决的问题:  密码泄漏 生成jwt的secret泄漏 修改密码后，使旧的jwt失效  设计思路注册  通过username + 随机字">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://gitee.com/makise.kurisu/filestorage/raw/master/images/blog/demo-%E5%9F%BA%E4%BA%8Egofiber-jwt%E5%AE%9E%E7%8E%B0%E7%99%BB%E5%BD%95%E9%AA%8C%E8%AF%81/%E6%B3%A8%E5%86%8C%E6%B5%81%E7%A8%8B.png">
 <meta property="og:image" content="https://gitee.com/makise.kurisu/filestorage/raw/master/images/blog/demo-%E5%9F%BA%E4%BA%8Egofiber-jwt%E5%AE%9E%E7%8E%B0%E7%99%BB%E5%BD%95%E9%AA%8C%E8%AF%81/%E7%99%BB%E5%BD%95%E6%B5%81%E7%A8%8B.png">
 <meta property="og:image" content="https://gitee.com/makise.kurisu/filestorage/raw/master/images/blog/demo-%E5%9F%BA%E4%BA%8Egofiber-jwt%E5%AE%9E%E7%8E%B0%E7%99%BB%E5%BD%95%E9%AA%8C%E8%AF%81/token%E7%94%9F%E6%88%90%E6%B5%81%E7%A8%8B.png">
 <meta property="og:image" content="https://gitee.com/makise.kurisu/filestorage/raw/master/images/blog/demo-%E5%9F%BA%E4%BA%8Egofiber-jwt%E5%AE%9E%E7%8E%B0%E7%99%BB%E5%BD%95%E9%AA%8C%E8%AF%81/token%E9%AA%8C%E8%AF%81%E6%B5%81%E7%A8%8B.png">
 <meta property="article:published_time" content="2021-07-02T10:38:04.000Z">
-<meta property="article:modified_time" content="2021-07-02T03:05:20.327Z">
+<meta property="article:modified_time" content="2021-07-08T15:33:23.039Z">
 <meta property="article:author" content="kurisu9">
 <meta property="article:tag" content="demo">
 <meta property="article:tag" content="golang">
@@ -220,10 +220,16 @@
                 <i class="fa fa-calendar-o"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-07-02 10:38:04 / 修改时间：03:05:20" itemprop="dateCreated datePublished" datetime="2021-07-02T10:38:04+00:00">2021-07-02</time>
+              <time title="创建时间：2021-07-02 10:38:04" itemprop="dateCreated datePublished" datetime="2021-07-02T10:38:04+00:00">2021-07-02</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-07-08 15:33:23" itemprop="dateModified" datetime="2021-07-08T15:33:23+00:00">2021-07-08</time>
+              </span>
 
           
 
@@ -237,7 +243,7 @@
 
       
         <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>在分布式项目中，传统的session进行用户的登录验证已经力不从心，使用token代替seesion也逐渐成为了一种趋势。最近在拿gofiber写demo中时，为了后续再扩展为分布式应用，于是结合jwt实现了一套简单的登录验证系统。</p>
-<p>在实现鉴权系统中，需要解决的问题:</p>
+<p>在实现登录验证系统中，需要解决的问题:</p>
 <ul>
 <li>密码泄漏</li>
 <li>生成jwt的secret泄漏</li>
