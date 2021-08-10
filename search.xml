@@ -519,4 +519,65 @@
         <tag>OneDrive</tag>
       </tags>
   </entry>
+  <entry>
+    <title>如何基于OneDrive搭建音乐云盘Ⅱ</title>
+    <url>/2021/08/10/%E5%A6%82%E4%BD%95%E5%9F%BA%E4%BA%8EOneDrive%E6%90%AD%E5%BB%BA%E9%9F%B3%E4%B9%90%E4%BA%91%E7%9B%98%E2%85%A1/</url>
+    <content><![CDATA[<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>前面提到了基于Microsoft Graph API来提取OneDrive分享文件的直链，而Microsoft Graph API需要一些准备工作。</p>
+<h1 id="应用注册"><a href="#应用注册" class="headerlink" title="应用注册"></a>应用注册</h1><ol>
+<li><p>使用Microsoft 个人账户登录到<a href="https://portal.azure.com/">Azure 门户</a>。</p>
+</li>
+<li><p>如果首次使用Azure 门户，请先创建一个Azure AD 租户。</p>
+</li>
+<li><p>选择所需的租户，在左侧导航窗格中，选择 Azure Active Directory 服务，然后选择<strong>应用注册</strong> &gt; <strong>新注册</strong>。</p>
+</li>
+<li><p>在注册应用程序页面后，输入应用程序的注册信息：</p>
+<ul>
+<li>名称：根据自己喜好进行命名即可，这里暂定为<strong>onedrive-music-cloud</strong>。</li>
+<li>支持的帐户类型：选择<strong>仅 Microsoft 个人帐户</strong>。</li>
+<li>重定向 URI: 选择应用类型为<strong>Web</strong>，然后输入重定向URI，暂定为<strong><a href="http://localhost:8180/msal4j/secure/aad">http://localhost:8180/msal4j/secure/aad</a></strong></li>
+</ul>
+</li>
+<li><p>完成后，选择<strong>注册</strong>。</p>
+</li>
+</ol>
+<p>注:</p>
+<ul>
+<li>这里建议使用个人账户。工作/学校账户的使用逻辑不太一致，并且在访问OneDrive API时需要提供SPO许可证。</li>
+</ul>
+<h1 id="生成客户端密码"><a href="#生成客户端密码" class="headerlink" title="生成客户端密码"></a>生成客户端密码</h1><p>web应用程序中，可以选择证书或者客户端密码来作为请求令牌时的证明。为了简单起见，这里使用客户端密码。</p>
+<ol>
+<li><p>在应用页面，选择左侧导航窗格中的<strong>证书和密码</strong>。</p>
+</li>
+<li><p>选择<strong>新客户端密码</strong>，输入说明以后，选择<strong>添加</strong></p>
+</li>
+<li><p>请保存好该密码，这个值只会出现一次，后续都将已加密的方式出现。</p>
+</li>
+</ol>
+<h1 id="配置权限"><a href="#配置权限" class="headerlink" title="配置权限"></a>配置权限</h1><p>在用户使用应用时，需要用户同意OneDrive的相关api。</p>
+<ol>
+<li><p>在应用页面，选择左侧导航窗格中的<strong>API 权限</strong>。</p>
+</li>
+<li><p>选择<strong>添加权限</strong>，然后选择<strong>Microsoft Graph</strong>。</p>
+</li>
+<li><p>勾选<strong>OpenId 权限</strong>下的<strong>offline_access</strong>、<strong>openid</strong>、<strong>profile</strong>。</p>
+</li>
+<li><p>在<strong>选择权限</strong>中输入<strong>files</strong>，并勾选<strong>Files.Read</strong>、<strong>Files.Read.All</strong>、<strong>Files.Read.Selected</strong>、<strong>Files.ReadWrite</strong>、<strong>Files.ReadWrite.All</strong>。</p>
+</li>
+<li><p>完成后，选择<strong>添加权限</strong>。</p>
+</li>
+</ol>
+<h1 id="结束"><a href="#结束" class="headerlink" title="结束"></a>结束</h1><p>至此，前期的准备工作基本告一段落，下一阶段将基于Microsoft Graph API构建简单的demo，用于获取OneDrive相关文件。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ul>
+<li><a href="https://docs.microsoft.com/zh-cn/graph/auth-register-app-v2">向 Microsoft 标识平台注册应用程序</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>如何基于OneDrive搭建音乐云盘</category>
+      </categories>
+      <tags>
+        <tag>折腾</tag>
+        <tag>OneDrive</tag>
+        <tag>Azure 应用注册</tag>
+      </tags>
+  </entry>
 </search>
